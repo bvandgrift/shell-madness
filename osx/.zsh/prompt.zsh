@@ -4,32 +4,64 @@ function parse_git_branch() {
 
 function git_prompt_info() {
   local ref=$(git symbolic-ref HEAD 2> /dev/null)
-  local gitst="$(git status 2> /dev/null)"
+  local git_status="$(git status 2> /dev/null)"
   local pairname=$(git config --get user.initials)
-  if [[ ${pairname} == '' ]]; then
-    pairname='(solo)'
+  local gstatus=' '
+
+  local master_pattern="^# On branch master"
+  local remote_pattern="# Your branch is (.*) of"
+  local diverge_pattern="# Your branch and (.*) have diverged"
+
+  if [[ ${pairname} == 'bv' ]]; then
+    pairname=''
   else
     pairname="($pairname)"
   fi
 
-  if [[ -f .git/MERGE_HEAD ]]; then
-    if [[ ${gitst} =~ "unmerged" ]]; then
-      gitstatus=" %{$fg[red]%}unmerged%{$reset_color%}"
-    else
-      gitstatus=" %{$fg[green]%}merged%{$reset_color%}"
-    fi
-  elif [[ ${gitst} =~ "Changes to be committed" ]]; then
-    gitstatus=" %{$fg[blue]%}☂%{$reset_color%}"
-  elif [[ ${gitst} =~ "use \"git add" ]]; then
-    gitstatus=" %{$fg[red]%}☁%{$reset_color%}"
-  elif [[ -n `git checkout HEAD 2> /dev/null | grep ahead` ]]; then
-    gitstatus=" %{$fg[yellow]%}☀%{$reset_color%}"
-  else
-    gitstatus=' '
+
+  # basics
+  if [[ ! ${git_status} =~ "working directory clean" ]]; then
+    gstatus="%{$fg[red]%}⚡ "
+  fi 
+
+  # dirty?
+  if [[ ${git_status} =~ "Changes to be committed" ]]; then
+    gstatus=" %{$fg[red]%}⚡"
+  elif [[ ${git_status} =~ "use \"git add" ]]; then
+    gstatus=" %{$fg[blue]%}⚡"
   fi
+
+  # remote stuff
+  if [[ ${git_status} =~ ${remote_pattern} ]]; then
+    if [[ ${match[1]} == "ahead" ]]; then
+      gstatus="$gstatus%{$fg[yellow]%}↑"
+    else
+      gstatus="$gstatus%{$fg[yellow]%}↓"
+    fi
+    if [[ ${git_status} =~ ${diverge_pattern} ]]; then
+      gstatus="$gstatus%{$fg[yellow]%}↕"
+    fi
+  fi
+
+  # merging considerations
+  if [[ -f .git/MERGE_HEAD ]]; then
+    if [[ ${git_status} =~ "unmerged" ]]; then
+      gstatus="$gstatus %{$fg[red]%}(unmerged)%{$reset_color%}"
+    else
+      gstatus="$gstatus %{$fg[green]%}(merged)%{$reset_color%}"
+    fi
+  fi
+
   if [[ -n $ref ]]; then
-    echo "%{$fg_bold[green]%}/${ref#refs/heads/}%{$reset_color%}$gitstatus$pairname"
+    echo "\n%{$fg_bold[green]%}${ref#refs/heads/}%{$reset_color%}$gstatus $pairname"
   fi
 }
 
-export PS1='%{$reset_color$fg[gray]%}%2~%{$reset_color$bold_color$fg[green]%}$(git_prompt_info)>%{$reset_color%} '
+function rvm_prompt_info() {
+  local vruby=$(echo $BUNDLE_PATH | sed -e 's/^.*\///' -e 's/@.*$//')
+  local vgemset=$(echo $BUNDLE_PATH | sed -e 's/^.*\///' -e 's/^[^@]*//')
+  echo "[%{$reset_color$fg[cyan]%}$vruby%{$reset_color%}%{$fg[magenta]%}$vgemset%{$reset_color%}]"
+}
+
+export PS1='%{$fg[gray]%}%n@%m:%3~$(git_prompt_info)%{$bold_color$fg[green]%}\$%{$reset_color%} '
+export RPS1='$(rvm_prompt_info)'

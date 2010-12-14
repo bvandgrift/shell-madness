@@ -2,7 +2,7 @@
 export PATH=/opt/local/bin:/opt/local/sbin:/usr/local/bin:/opt/local/libexec/git-core:$PATH
 
 # Our list of directorys we can cd to from anywhere
-export CDPATH=.:~/src:~/src/personal:~/code/clients/relevance:~/Documents
+export CDPATH=.:~/src:~/src/personal:~/code/clients/relevance:~/code/clients:~/code:~/Documents
 
 # Add macports man pages to the man path
 export MANPATH=/opt/local/share/man:$MANPATH
